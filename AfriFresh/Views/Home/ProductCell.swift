@@ -4,7 +4,7 @@ struct ProductCell: View {
     let product: Product
     @EnvironmentObject var cartViewModel: CartViewModel
 
-    // Computed quantity in cart for this product
+    // Current quantity in the cart
     var cartQuantity: Int {
         cartViewModel.items.first(where: { $0.product.id == product.id })?.quantity ?? 0
     }
@@ -70,20 +70,53 @@ struct ProductCell: View {
                     .lineLimit(1)
             }
 
-            // MARK: - Add to Cart Button
-            Button(action: {
-                cartViewModel.addToCart(product)
-            }) {
-                HStack {
-                    Image(systemName: "cart.badge.plus")
-                    Text("Add to Cart")
-                        .fontWeight(.semibold)
+            // MARK: - Cart Controls
+            if cartQuantity > 0 {
+                // Show + / − buttons when already in cart
+                HStack(spacing: 12) {
+                    Button(action: {
+                        if cartQuantity > 0 {
+                            cartViewModel.updateQuantity(
+                                for: CartItem(product: product, quantity: 1),
+                                quantity: cartQuantity - 1
+                            )
+                        }
+                    }) {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.title2)
+                    }
+
+                    Text("\(cartQuantity)")
+                        .font(.headline)
+                        .frame(minWidth: 24)
+
+                    Button(action: {
+                        cartViewModel.addToCart(product)
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.title2)
+                    }
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity)
-                .background(Color.green.opacity(0.8))
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .padding(.top, 4)
+            } else {
+                // Initial "Add to Cart" button
+                Button(action: {
+                    cartViewModel.addToCart(product) // Automatically adds 1
+                }) {
+                    HStack {
+                        Image(systemName: "cart.badge.plus")
+                        Text("Add to Cart")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(6)
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                .padding(.top, 4)
             }
         }
         .padding()
