@@ -49,13 +49,55 @@ struct HomeView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                         ForEach(filteredProducts) { product in
-                            NavigationLink(
-                                destination: ProductDetailView(product: product)
-                                    .environmentObject(cartViewModel)
-                                    .environmentObject(settingsStore)
-                            ) {
-                                ProductCell(product: product)
-                                    .environmentObject(cartViewModel)
+                            VStack(spacing: 8) {
+                                NavigationLink(
+                                    destination: ProductDetailView(product: product)
+                                        .environmentObject(cartViewModel)
+                                        .environmentObject(settingsStore)
+                                ) {
+                                    ProductCell(product: product)
+                                        .environmentObject(cartViewModel)
+                                }
+                                
+                                // Only show plus/minus if product is in cart
+                                if let cartItem = cartViewModel.items.first(where: { $0.product.id == product.id }) {
+                                    HStack(spacing: 12) {
+                                        // Minus button
+                                        Button(action: {
+                                            let newQuantity = max(cartItem.quantity - 1, 0)
+                                            cartViewModel.updateQuantity(for: cartItem, quantity: newQuantity)
+                                        }) {
+                                            Image(systemName: "minus.circle.fill")
+                                                .foregroundColor(cartItem.quantity > 0 ? .red : .gray)
+                                                .font(.title2)
+                                        }
+                                        
+                                        // Quantity label
+                                        Text("\(cartItem.quantity)")
+                                            .font(.headline)
+                                            .frame(minWidth: 24)
+                                        
+                                        // Plus button
+                                        Button(action: {
+                                            cartViewModel.updateQuantity(for: cartItem, quantity: cartItem.quantity + 1)
+                                        }) {
+                                            Image(systemName: "plus.circle.fill")
+                                                .foregroundColor(.green)
+                                                .font(.title2)
+                                        }
+                                    }
+                                    .padding(.top, 4)
+                                } else {
+                                    // Cart icon: first tap adds 1 to cart
+                                    Button(action: {
+                                        cartViewModel.addToCart(product)
+                                    }) {
+                                        Image(systemName: "cart.badge.plus")
+                                            .foregroundColor(.blue)
+                                            .font(.title2)
+                                    }
+                                    .padding(.top, 4)
+                                }
                             }
                         }
                     }
