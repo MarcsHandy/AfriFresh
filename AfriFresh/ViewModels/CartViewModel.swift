@@ -6,36 +6,68 @@ class CartViewModel: ObservableObject {
     @Published private(set) var items: [CartItem] = []
     @Published var checkoutMessage: String? = nil
     
+    private var removalTimers: [UUID: Timer] = [:] // Track timers for delayed removal
+    
     // MARK: - Add Item
     func addToCart(_ product: Product) {
         if let index = items.firstIndex(where: { $0.product.id == product.id }) {
             items[index].quantity += 1
+            cancelRemovalTimer(for: items[index])
         } else {
             let newItem = CartItem(product: product, quantity: 1)
             items.append(newItem)
         }
     }
     
-    // MARK: - Remove Item
+    // MARK: - Remove Item Immediately
     func removeFromCart(_ product: Product) {
         guard let index = items.firstIndex(where: { $0.product.id == product.id }) else { return }
         if items[index].quantity > 1 {
             items[index].quantity -= 1
+            scheduleRemovalIfNeeded(for: items[index])
         } else {
             items.remove(at: index)
         }
     }
     
-    //MARK: - Quantity Updater
+    // MARK: - Update Quantity with delayed removal
     func updateQuantity(for item: CartItem, quantity: Int) {
-            guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
-            items[index].quantity = quantity
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[index].quantity = quantity
+        
+        if quantity == 0 {
+            // Schedule removal after 3 seconds
+            scheduleRemovalIfNeeded(for: items[index])
+        } else {
+            // Cancel any pending removal if quantity increased
+            cancelRemovalTimer(for: items[index])
+        }
     }
     
-    //MARK: - Add a method to set items for previews or initialization
-        func setItems(_ newItems: [CartItem]) {
-            items = newItems
+    // MARK: - Get current quantity for a product
+    func quantity(for product: Product) -> Int {
+        items.first(where: { $0.product.id == product.id })?.quantity ?? 0
+    }
+    
+    // MARK: - Delayed removal helpers
+    private func scheduleRemovalIfNeeded(for item: CartItem) {
+        removalTimers[item.id]?.invalidate()
+        removalTimers[item.id] = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            self.items.removeAll { $0.id == item.id }
+            self.removalTimers[item.id] = nil
         }
+    }
+    
+    private func cancelRemovalTimer(for item: CartItem) {
+        removalTimers[item.id]?.invalidate()
+        removalTimers[item.id] = nil
+    }
+    
+    // MARK: - Set items for previews or initialization
+    func setItems(_ newItems: [CartItem]) {
+        items = newItems
+    }
     
     // MARK: - Remove by IndexSet (for .onDelete)
     func removeItem(at offsets: IndexSet) {
@@ -56,6 +88,8 @@ class CartViewModel: ObservableObject {
     func clearCart() {
         items.removeAll()
         checkoutMessage = nil
+        removalTimers.values.forEach { $0.invalidate() }
+        removalTimers.removeAll()
     }
     
     // MARK: - Checkout Simulation
@@ -95,4 +129,3 @@ class CartViewModel: ObservableObject {
         }
     }
 }
-

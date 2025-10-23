@@ -31,10 +31,18 @@ struct CartView: View {
                                 Text(item.product.name)
                                     .font(.headline)
                                 Spacer()
-                                Stepper(value: binding(for: item), in: 1...100) {
-                                    Text("\(item.quantity)")
+                                
+                                // Stepper for quantity
+                                Stepper(value: Binding(
+                                    get: { item.quantity },
+                                    set: { newQuantity in
+                                        cartViewModel.updateQuantity(for: item, quantity: newQuantity)
+                                    }
+                                ), in: 0...100) {
+                                    Text("Qty: \(item.quantity)")
+                                        .frame(minWidth: 50)
                                 }
-                                .frame(width: 100)
+                                
                                 Text("UGX \(item.totalPrice, specifier: "%.0f")")
                             }
                         }
@@ -53,13 +61,8 @@ struct CartView: View {
                         .padding(.horizontal)
                         
                         Button(action: {
-                            // ✅ Pass the OrderViewModel instance
                             cartViewModel.checkout(orderViewModel: orderViewModel) { success in
-                                if success {
-                                    checkoutMessage = cartViewModel.checkoutMessage ?? "Order placed successfully!"
-                                } else {
-                                    checkoutMessage = cartViewModel.checkoutMessage ?? "Failed to checkout."
-                                }
+                                checkoutMessage = cartViewModel.checkoutMessage ?? (success ? "Order placed successfully!" : "Failed to checkout.")
                                 showCheckoutAlert = true
                             }
                         }) {
@@ -86,16 +89,10 @@ struct CartView: View {
                 )
             }
         }
-    }
-    
-    // Helper for Stepper binding
-    private func binding(for item: CartItem) -> Binding<Int> {
-        Binding(
-            get: { item.quantity },
-            set: { newQuantity in
-                cartViewModel.updateQuantity(for: item, quantity: newQuantity)
-            }
-        )
+        // Observe cart items and update UI when an item disappears after 3 seconds
+        .onReceive(cartViewModel.$items) { _ in
+            // Force view update when items change (needed for delayed removal)
+        }
     }
 }
 

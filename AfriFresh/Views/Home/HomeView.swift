@@ -7,6 +7,7 @@ struct HomeView: View {
     @EnvironmentObject var cartViewModel: CartViewModel
 
     @State private var selectedCategory: String = "All"
+    @State private var showingCartControls: [String: Bool] = [:] // Track plus/minus visibility per product
     
     private let categories = ["All", "Fruits", "Vegetables"]
     
@@ -56,30 +57,38 @@ struct HomeView: View {
                                         .environmentObject(settingsStore)
                                 ) {
                                     ProductCell(product: product)
-                                        .environmentObject(cartViewModel)
                                 }
                                 
-                                // Only show plus/minus if product is in cart
-                                if let cartItem = cartViewModel.items.first(where: { $0.product.id == product.id }) {
+                                let cartItem = cartViewModel.items.first(where: { $0.product.id == product.id })
+                                let isShowingControls = showingCartControls[product.id] ?? (cartItem != nil)
+                                
+                                if isShowingControls, let item = cartItem {
                                     HStack(spacing: 12) {
                                         // Minus button
                                         Button(action: {
-                                            let newQuantity = max(cartItem.quantity - 1, 0)
-                                            cartViewModel.updateQuantity(for: cartItem, quantity: newQuantity)
+                                            let newQuantity = max(item.quantity - 1, 0)
+                                            cartViewModel.updateQuantity(for: item, quantity: newQuantity)
+                                            
+                                            if newQuantity == 0 {
+                                                // Revert to cart icon after 3 seconds
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                                    showingCartControls[product.id] = false
+                                                }
+                                            }
                                         }) {
                                             Image(systemName: "minus.circle.fill")
-                                                .foregroundColor(cartItem.quantity > 0 ? .red : .gray)
+                                                .foregroundColor(item.quantity > 0 ? .red : .gray)
                                                 .font(.title2)
                                         }
                                         
                                         // Quantity label
-                                        Text("\(cartItem.quantity)")
+                                        Text("\(item.quantity)")
                                             .font(.headline)
                                             .frame(minWidth: 24)
                                         
                                         // Plus button
                                         Button(action: {
-                                            cartViewModel.updateQuantity(for: cartItem, quantity: cartItem.quantity + 1)
+                                            cartViewModel.updateQuantity(for: item, quantity: item.quantity + 1)
                                         }) {
                                             Image(systemName: "plus.circle.fill")
                                                 .foregroundColor(.green)
@@ -91,6 +100,7 @@ struct HomeView: View {
                                     // Cart icon: first tap adds 1 to cart
                                     Button(action: {
                                         cartViewModel.addToCart(product)
+                                        showingCartControls[product.id] = true // show plus/minus immediately
                                     }) {
                                         Image(systemName: "cart.badge.plus")
                                             .foregroundColor(.blue)
