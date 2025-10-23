@@ -94,13 +94,21 @@ class CartViewModel: ObservableObject {
     
     // MARK: - Checkout Simulation
     func checkout(orderViewModel: OrderViewModel, userId: String = "current_user_id", completion: @escaping (Bool) -> Void) {
+        // 🧾 Check if cart is empty
         guard !items.isEmpty else {
             checkoutMessage = "Your cart is empty."
             completion(false)
             return
         }
+        
+        // 🛑 Prevent checkout if any item has quantity 0
+        guard items.allSatisfy({ $0.quantity > 0 }) else {
+            checkoutMessage = "Remove or update items with 0 quantity before checkout."
+            completion(false)
+            return
+        }
 
-        // Create order items
+        // ✅ Create order items
         let orderItems = items.map {
             OrderItem(
                 productId: $0.product.id,
@@ -110,7 +118,7 @@ class CartViewModel: ObservableObject {
             )
         }
 
-        // Create an order
+        // ✅ Create new order
         let newOrder = Order(
             userId: userId,
             items: orderItems,
@@ -118,10 +126,10 @@ class CartViewModel: ObservableObject {
             createdAt: Date()
         )
 
-        // Add to OrderViewModel
+        // ✅ Add order to OrderViewModel
         orderViewModel.recentOrders.append(newOrder)
 
-        // Simulate delay for user feedback
+        // 💬 Simulate confirmation delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.checkoutMessage = "✅ Order placed successfully!"
             self.clearCart()
